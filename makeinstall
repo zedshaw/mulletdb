@@ -1,0 +1,20 @@
+#!/bin/sh
+. configure.paths
+
+install -m 755 mulletdb $CONFIG_BINPATH/mulletdb
+
+if [ `whoami` = "root" ]; then
+  etcpath=/etc
+else
+  if [ -d "${HOME}/.etc" ]; then
+    etcpath="${HOME}/.etc"
+  else
+    mkdir -p "${HOME}/etc"
+    etcpath="${HOME}/etc"
+  fi
+  mkdir -p "${HOME}/var/run"
+fi
+
+if [ ! -e "${etcpath}/mulletdb.conf" ]; then
+  cp rsrc/mulletdb.conf "$etcpath"/mulletdb.conf
+fi

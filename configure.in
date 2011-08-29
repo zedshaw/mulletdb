@@ -1,0 +1,10 @@
+cxx
+grace
+pthread
+libsocket
+libdl
+libcrypt
+libsqlite3
+@LIBS=-lzmq
+@LIBS=-ltokyocabinet
+@LIBS=-ltokyodystopia

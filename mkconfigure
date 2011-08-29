@@ -1,0 +1,94 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# Solaris' /bin/sh uses a braindead builtin echo, circumvent
+# ---------------------------------------------------------------------------
+
+TEST=`echo -n ""`
+if [ -z "$TEST" ]; then
+  ECHON="echo -n"
+  NNL=""
+else
+  ECHON="echo"
+  NNL="\c"
+fi
+
+# ---------------------------------------------------------------------------
+# Figure out where we are installed
+# ---------------------------------------------------------------------------
+BASEDIR="/grace-configure"
+
+if [ -z "$BASEDIR" ]; then echo "cannot find basedir" >&2 ; exit 1; fi
+echo "BASEDIR=$BASEDIR"
+
+if [ ! -f "configure.in" ]; then echo "configure.in not found" >&2 ; exit 1 ; fi
+
+rm -f configure.flags configure.include
+
+# give me a non-cat version that doesn't change the overall order of arguments
+# in this line, and I'll agree that the cat is useless.
+TINAHGREV="0.9.35-tip"
+cat $BASEDIR/parts/header | sed "s/__TINAHGREV__/$TINAHGREV/" > configure
+
+# clean configure.dep
+rm -f configure.dep
+touch configure.dep
+
+# find extra dependencies
+cat configure.in | {
+  while read line; do
+    if [ -f $BASEDIR/$line.dep ]; then
+	  for dep in `cat $BASEDIR/$line.dep`; do
+	    grep "$dep" configure.in >/dev/null 2>&1 || { 
+	      echo "$dep" >> configure.dep
+	      if [ -f $BASEDIR/$dep.dep ]; then
+  	        for dep2 in `cat $BASEDIR/$dep.dep`; do
+	          grep "$dep2" configure.in >/dev/null 2>&1 || echo "$dep2" >> configure.dep
+	        done
+	      fi
+	    }
+	  done
+	fi
+  done
+}
+
+cat configure.in configure.dep | uniq -u | {
+  while read line; do
+    firstchar=$(echo $line | cut -c1)
+    if [ "$firstchar" = "@" ]; then
+      echo "$line" | cut -c2- | sed -e "s/=/:/" >> configure.flags
+    else
+	  if [ -f $BASEDIR/$line.rc ]; then
+		if [ ! -f .configtmp.$line ]; then
+		  touch .configtmp.$line
+		  echo "including $line"
+		  cat $BASEDIR/$line.rc >> configure
+		  cat $BASEDIR/$line.flags >> configure.flags
+		  cat $BASEDIR/$line.include >> configure.include
+		fi
+	  fi
+	fi
+  done
+}
+
+rm -f .configtmp.*
+
+cat $BASEDIR/parts/makemakeinclude >>configure
+
+for flag in `cat configure.flags | cut -f1 -d: | sort -u`; do
+  $ECHON "$flag =$NNL" >> configure
+  for parm in `cat configure.flags | grep "^$flag:" | cut -f2 -d:`; do
+    $ECHON " $parm$NNL" >> configure
+  done
+  echo "" >> configure
+done
+
+cat $BASEDIR/parts/makeplatformh >>configure
+
+cat configure.include >> configure
+cat $BASEDIR/parts/footer >>configure
+
+rm -f configure.flags
+rm -f configure.include
+rm -f configure.dep
+if [ -f configure.log ]; then rm -f configure.log; fi
+chmod 755 configure
