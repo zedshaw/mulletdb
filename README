@@ -1,0 +1,7 @@
+I may bring this back in the future, but for now it's just a joke project
+I did for fun to make fun of the various NoSQL idiots out there.
+
+It's simple a thin ZeroMQ wrapper around SQlite3, disk storage, and
+tokyo cabinet storage.  There's a sample python client in clients/python.
+
+
